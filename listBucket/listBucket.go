@@ -2,23 +2,31 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"log"
+	"time"
 
 	"cloud.google.com/go/storage"
-	"golang.org/x/oauth2/google"
 	"google.golang.org/api/iterator"
-	strageapi "google.golang.org/api/storage/v1"
 )
 
 func main() {
-	buckets, err := listBuckets()
-	if err != nil {
-		panic(err)
+	var projectID string
+	flag.StringVar(&projectID, "project_id", "", "GCP project ID")
+	flag.Parse()
+
+	for {
+		buckets, err := listBuckets(projectID)
+		if err != nil {
+			panic(err)
+		}
+		log.Println("Got buckets: ", buckets, " at ", time.Now())
+		time.Sleep(time.Minute)
 	}
-	fmt.Println("Got buckets: ", buckets)
 }
 
-func listBuckets() ([]string, error) {
+func listBuckets(projectID string) ([]string, error) {
 	ctx := context.Background()
 
 	client, err := storage.NewClient(ctx)
@@ -27,14 +35,8 @@ func listBuckets() ([]string, error) {
 	}
 	defer client.Close()
 
-	credentials, err := google.FindDefaultCredentials(ctx, strageapi.CloudPlatformScope)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load default credentials: %v", err)
-	}
-	fmt.Println("credentials: ", string(credentials.JSON))
-
 	var buckets []string
-	it := client.Buckets(ctx, credentials.ProjectID)
+	it := client.Buckets(ctx, projectID)
 	for {
 		battrs, err := it.Next()
 		if err == iterator.Done {
